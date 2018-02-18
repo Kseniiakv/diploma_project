@@ -3,7 +3,7 @@ from calc_tools import *
 import pandas as pd
 
 
-def hamilt_parts(a, alpha, beta, flavor, orb_moment, A=0.18, B=-1.234):
+def hamilt_parts(a, alpha, beta, flavor, orb_moment, A=0.1825, B=-0.562):
 
     mass = quark_masses(flavor)
     mu_q, mu_p = masses(mass)
@@ -113,18 +113,149 @@ def spin_potential(params, flavor, spin, orb_moment=(0, 0)):
     return ss_potential/norm_coeff
 
 
-def one_particle_mass(flavor, spin, orb_moment=(0, 0), B=-1.234):
+def delta_averaged(params, flavor, orb_moment=(0, 0)):
+
+    n = int((len(params) + 1) / 3)
+    a = [1]
+    a.extend(params[:(n - 1)])
+    a = np.array(a)
+    alpha = np.array(params[(n - 1):(2 * n - 1)])
+    beta = np.array(params[(2 * n - 1):(3 * n - 1)])
+    L_q, l_p = orb_moment
+
+    mass = quark_masses(flavor)
+    b, c = get_params(mass)
+    alpha_s = alphas(flavor)
+
+    alpha_matrix = direct_sum(alpha)
+    beta_matrix = direct_sum(beta)
+    a_dyad = np.tensordot(a, a, axes=0)
+
+    gammas = special.gamma(L_q + 1.5) * special.gamma(l_p + 1.5)
+
+    norm_sum = np.sum(a_dyad / (np.power(alpha_matrix, (L_q + 1.5)) *
+                                np.power(beta_matrix, (l_p + 1.5))))
+    norm_coeff = 4 * np.pi ** 2 * gammas * norm_sum
+
+    mass_coef = np.array([((1/mass[i])**2 + (1/mass[j])**2) for i in range(len(mass))
+                             for j in range(len(mass)) if i != j and i < j])
+
+    summ = 0
+    for i in range(len(b)):
+        brackets = np.power((b[i] ** 2) * beta_matrix + (c[i] ** 2) *
+                            alpha_matrix, (L_q + l_p) + 1.5)
+        pair_delta_potential = alpha_s[i] * c[i]**(2*L_q) * b[i]**(2 * l_p) *\
+                           np.sum(a_dyad / brackets) * mass_coef[i]
+        summ += pair_delta_potential
+
+    ss_potential = (2/3) * summ * np.power(np.pi, 2) * special.gamma((L_q + l_p) + 1.5)
+    return ss_potential/norm_coeff
+
+
+def tensor_potential(params, flavor, orb_moment=(0, 0)):
+
+    n = int((len(params) + 1) / 3)
+    a = [1]
+    a.extend(params[:(n - 1)])
+    a = np.array(a)
+    alpha = np.array(params[(n - 1):(2 * n - 1)])
+    beta = np.array(params[(2 * n - 1):(3 * n - 1)])
+    L_q, l_p = orb_moment
+
+    mass = quark_masses(flavor)
+    b, c = get_params(mass)
+    d, f = d_f_params(mass)
+    alpha_s = alphas(flavor)
+
+    alpha_matrix = direct_sum(alpha)
+    beta_matrix = direct_sum(beta)
+    a_dyad = np.tensordot(a, a, axes=0)
+    alpha_dyad = np.tensordot(alpha, alpha, axes=0)
+    beta_dyad = np.tensordot(beta, beta, axes=0)
+    alpha_beta_matrix = alpha_matrix * beta_matrix
+
+    gammas = special.gamma(L_q + 1.5) * special.gamma(l_p + 1.5)
+
+    norm_sum = np.sum(a_dyad / (np.power(alpha_matrix, (L_q + 1.5)) *
+                                np.power(beta_matrix, (l_p + 1.5))))
+    norm_coeff = 4 * np.pi ** 2 * gammas * norm_sum
+
+    prod_mass = np.array([mass[i] * mass[j] for i in range(len(mass))
+                             for j in range(len(mass)) if i != j and i < j])
+
+    prod_f = np.array([f[i] * f[j] for i in range(len(f))
+                             for j in range(len(f)) if i != j and i < j])
+    prod_d = np.array([d[i] * d[j] for i in range(len(d))
+                       for j in range(len(d)) if i != j and i < j])
+
+    summ = 0
+    for i in range(len(b)):
+        brackets = np.power((b[i] ** 2) * beta_matrix + (c[i] ** 2) *
+                            alpha_matrix, 0.5)
+
+        tensor_brackets = prod_f[i] * alpha_dyad/alpha_matrix + prod_d[i] * beta_dyad/beta_matrix
+        pair_tensor_potential = alpha_s[i] *\
+                           np.sum(a_dyad * tensor_brackets / (brackets * alpha_beta_matrix)) / prod_mass[i]
+        summ += pair_tensor_potential
+
+    tensor_potential = (2/3) * 16 * summ * np.power(np.pi, 5/2)
+    return tensor_potential/norm_coeff
+
+
+def momentum_averaged(params, flavor, orb_moment=(0, 0)):
+    n = int((len(params) + 1) / 3)
+    a = [1]
+    a.extend(params[:(n - 1)])
+    a = np.array(a)
+    alpha = np.array(params[(n - 1):(2 * n - 1)])
+    beta = np.array(params[(2 * n - 1):(3 * n - 1)])
+    L_q, l_p = orb_moment
+
+    mass = quark_masses(flavor)
+    b, c = get_params(mass)
+    d, f = d_f_params(mass)
+    alpha_s = alphas(flavor)
+
+    alpha_matrix = direct_sum(alpha)
+    beta_matrix = direct_sum(beta)
+    a_dyad = np.tensordot(a, a, axes=0)
+    alpha_dyad = np.tensordot(alpha, alpha, axes=0)
+    beta_dyad = np.tensordot(beta, beta, axes=0)
+    alpha_beta_matrix = alpha_matrix * beta_matrix
+
+    gammas = special.gamma(L_q + 1.5) * special.gamma(l_p + 1.5)
+
+    norm_sum = np.sum(a_dyad / (np.power(alpha_matrix, (L_q + 1.5)) *
+                                np.power(beta_matrix, (l_p + 1.5))))
+    norm_coeff = 4 * np.pi ** 2 * gammas * norm_sum
+
+    summ = 0
+    for i in range(len(b)):
+
+        tensor_brackets = np.power(f[i]**2 * alpha_dyad / alpha_matrix + d[i]**2 * beta_dyad / beta_matrix, 2)
+        pair_tensor_potential = alpha_s[i] * \
+                                np.sum(a_dyad * tensor_brackets / np.power(alpha_beta_matrix, 3/2)) / np.power(mass[i], 3)
+        summ += pair_tensor_potential
+
+    tensor_potential = - (60/8) * summ * np.power(np.pi, 3)
+    return tensor_potential / norm_coeff
+
+
+def one_particle_mass(flavor, spin, orb_moment=(0, 0), B=-0.562):
     Initial = np.array([1, 1, 1, 1, 1, 1, 1, 1])
     bounds = [(None, None), (None, None), (0.00000001, None), (0.00000001, None),
               (0.00000001, None), (0.00000001, None), (0.00000001, None), (0.00000001, None)]
 
     res = optimize.minimize(hamiltonian, Initial, args=(flavor, orb_moment), method='SLSQP', bounds=bounds)
     ss_potential = spin_potential(res.x, flavor, spin)
+    delta_potential = delta_averaged(res.x, flavor)
+    dd_potential = tensor_potential(res.x, flavor)
+    momentum_potential = momentum_averaged(res.x, flavor)
 
-    total_mass = res.fun + ss_potential
+    total_mass = res.fun + ss_potential + delta_potential + dd_potential + momentum_potential
     mass = quark_masses(flavor)
     pure_t_v = res.fun - sum(mass) - B
-    return total_mass, pure_t_v, ss_potential
+    return total_mass, pure_t_v, ss_potential, delta_potential, dd_potential, momentum_potential
 
 
 def calculate(spectre):
@@ -134,13 +265,17 @@ def calculate(spectre):
         spin = spectre[particle]['spin']
         name = spectre[particle]['name']
         exp = spectre[particle]['exp']
-        total_mass, pure_t_v, ss_potential = one_particle_mass(flavor, spin)
+        total_mass, pure_t_v, ss_potential, delta_potential, dd_potential, momentum_potential = one_particle_mass(flavor, spin)
         total_mass *= 1000
         pure_t_v *=1000
         ss_potential *= 1000
+        delta_potential *= 1000
+        dd_potential *= 1000
+        momentum_potential *= 1000
         exp *= 1000
         values[name] = {'Total mass': total_mass, 'T + V': pure_t_v,
-                        'ss potential': ss_potential, 'Difference': total_mass - exp}
+                        'ss potential': ss_potential, 'delta potential': delta_potential,
+                        'dd potential': dd_potential, 'momentum potential': momentum_potential, 'Difference': total_mass - exp}
     return values
 
 

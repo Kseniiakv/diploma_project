@@ -1,7 +1,7 @@
 import numpy as np
 
 def quark_masses(flavor):
-    m = [0.335, 0.65, 1.92, 5.3]
+    m = [0.345, 0.471, 1.697, 5.037]
     return np.array([m[i] for i in flavor])
 
 
@@ -30,6 +30,14 @@ def get_params(m):
     c_3 = 1
     c = [c_1, c_2, c_3]
     return np.array(b), np.array(c)
+
+def d_f_params(m):
+    d = [1, -1, 0]
+    f_1 = -2 / np.sqrt(3) * m[1] / (m[1] + m[2])
+    f_2 = -2 / np.sqrt(3) * m[2] / (m[1] + m[2])
+    f_3 = 2 / np.sqrt(3)
+    f = [f_1, f_2, f_3]
+    return np.array(d), np.array(f)
 
 
 def direct_sum(vector):
